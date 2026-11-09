@@ -1,0 +1,68 @@
+{
+  "id": "91Mu3YqdGY8e27Or",
+  "name": "좋은 글귀 생성기 (샘플)",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-11-04T11:08:00.516Z",
+  "updatedAt": "2026-11-04T11:08:00.516Z",
+  "isArchived": false,
+  "versionId": "abc26d9b-cbf6-484a-b177-4c66d1d5f125",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "name": "실행 버튼",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "a1b2c3d4-0002-4000-8000-000000000002",
+      "name": "좋은 글귀 뽑기",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const quotes = [\n  { text: '천 리 길도 한 걸음부터.', author: '속담' },\n  { text: '오늘 걷지 않으면 내일은 뛰어야 한다.', author: '격언' },\n  { text: '실패는 성공으로 가는 과정의 일부일 뿐이다.', author: '격언' },\n  { text: '행복은 습관이다. 그것을 몸에 지니라.', author: '엘버트 허버드' },\n  { text: '가장 큰 영광은 한 번도 실패하지 않음이 아니라, 실패할 때마다 다시 일어서는 데 있다.', author: '격언' },\n  { text: '작은 기회로부터 종종 위대한 업적이 시작된다.', author: '데모스테네스' },\n  { text: '배움에는 끝이 없다.', author: '격언' },\n  { text: '지금 이 순간을 즐겨라.', author: '호라티우스' },\n  { text: '꿈을 꿀 수 있다면, 이룰 수도 있다.', author: '격언' },\n  { text: '어제보다 나은 오늘이면 충분하다.', author: '격언' }\n];\n\nconst pick = quotes[Math.floor(Math.random() * quotes.length)];\n\nreturn [{\n  json: {\n    quote: pick.text,\n    author: pick.author,\n    line: `\"${pick.text}\" - ${pick.author}`,\n    generatedAt: new Date().toISOString()\n  }\n}];"
+      }
+    }
+  ],
+  "connections": {
+    "실행 버튼": {
+      "main": [
+        [
+          {
+            "node": "좋은 글귀 뽑기",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "91Mu3YqdGY8e27Or",
+      "projectId": "RPwGrpK6nVlW1oE1",
+      "createdAt": "2026-11-04T11:08:00.522Z",
+      "updatedAt": "2026-11-04T11:08:00.522Z"
+    }
+  ],
+  "activeVersion": null
+}
