@@ -1,0 +1,625 @@
+{
+  "id": "JHFuejs28vxQdTWA",
+  "name": "[CRON] 인기 한식 레시피 블로그 메일 발송 (Gemini)",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-11-06T10:48:02.045Z",
+  "updatedAt": "2026-11-06T11:26:31.461Z",
+  "isArchived": false,
+  "versionId": "642044b8-eaf3-4ddb-a0d5-e95681e81484",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "c2000000-0000-4000-8000-000000000001",
+      "name": "수동 실행",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "c2000000-0000-4000-8000-000000000002",
+      "name": "매일 오전 9시",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        400
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "c2000000-0000-4000-8000-000000000003",
+      "name": "1-1. 최근 한식 트렌드 조회 (Google 뉴스)",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "position": [
+        300,
+        300
+      ],
+      "parameters": {
+        "url": "https://news.google.com/rss/search?q=%ED%95%9C%EC%8B%9D+%EB%A0%88%EC%8B%9C%ED%94%BC+%EC%9D%B8%EA%B8%B0+when:30d&hl=ko&gl=KR&ceid=KR:ko",
+        "options": {}
+      }
+    },
+    {
+      "id": "c2000000-0000-4000-8000-000000000004",
+      "name": "1-2. 음식 선정 요청 구성",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// 최근 30일 뉴스 제목을 근거로 인기 한식 1가지를 고르도록 Gemini 요청 구성\nconst today = $now.setZone('Asia/Seoul');\nconst m = today.month;\nconst season = [12, 1, 2].includes(m) ? '겨울' : [3, 4, 5].includes(m) ? '봄' : [6, 7, 8].includes(m) ? '여름' : '가을';\nconst headlines = $input.all().map(i => i.json.title).filter(Boolean).slice(0, 30);\nconst news = headlines.length\n  ? headlines.map((t, i) => (i + 1) + '. ' + t).join(String.fromCharCode(10))\n  : '(뉴스를 가져오지 못했습니다. 시기와 최근 트렌드를 고려하세요.)';\n\nconst system = [\n  '당신은 한국 음식 트렌드 분석가입니다.',\n  '제공된 최근 30일 한식 관련 뉴스 제목과 현재 시기(' + today.toFormat('yyyy년 M월') + ', ' + season + ')를 근거로,',\n  '최근 한국에서 가장 인기 있고 화제가 된 한식 중 집에서 만들 수 있는 한 끼 요리 1가지를 선정하세요.',\n  '김치·깍두기 같은 반찬 단독 메뉴는 제외하세요.',\n  '반드시 아래 JSON 형식으로만 답하세요.',\n  '{\"food_ko\":\"음식 한글명\",\"food_en\":\"영문명(이미지 검색용, 예: kimchi fried rice)\",\"reason\":\"선정 이유 한 문장\"}'\n].join(String.fromCharCode(10));\nconst user = '오늘은 ' + today.toFormat('yyyy-MM-dd') + '입니다.' + String.fromCharCode(10, 10) + '[최근 30일 한식 관련 뉴스 제목]' + String.fromCharCode(10) + news;\n\nreturn [{ json: { body: {\n  systemInstruction: { parts: [{ text: system }] },\n  contents: [{ role: 'user', parts: [{ text: user }] }],\n  generationConfig: { temperature: 1.0 }\n} } }];"
+      }
+    },
+    {
+      "id": "c2000000-0000-4000-8000-000000000005",
+      "name": "1-3. 인기 한식 선정 (Gemini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput",
+      "position": [
+        900,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "timeout": 90000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "lwVBb5DR9jkwNnm4",
+          "name": "Gemini API Key"
+        }
+      }
+    },
+    {
+      "id": "c2000000-0000-4000-8000-000000000006",
+      "name": "1-3. 대체 모델 (Gemini Flash-Lite)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 5000,
+      "position": [
+        900,
+        500
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('1-2. 음식 선정 요청 구성').item.json.body) }}",
+        "options": {
+          "timeout": 90000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "lwVBb5DR9jkwNnm4",
+          "name": "Gemini API Key"
+        }
+      }
+    },
+    {
+      "id": "c2000000-0000-4000-8000-000000000007",
+      "name": "1-4. 선정 결과 정리",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        300
+      ],
+      "parameters": {
+        "jsCode": "function parseGemini(res) {\n  const parts = res.candidates?.[0]?.content?.parts || [];\n  const text = parts.filter(p => !p.thought).map(p => p.text || '').join('');\n  const m = text.replace(/```json|```/g, '').match(/\\{[\\s\\S]*\\}/);\n  if (!m) throw new Error(text ? 'Gemini 응답에서 JSON을 찾을 수 없습니다: ' + text.slice(0, 300) : 'Gemini 응답이 비어 있습니다: ' + JSON.stringify(res).slice(0, 400));\n  return JSON.parse(m[0]);\n}\n\nconst food = parseGemini($input.first().json);\nif (!food.food_ko || !food.food_en) throw new Error('음식 선정 결과가 올바르지 않습니다: ' + JSON.stringify(food));\n\n// 2단계: 재료·요리 순서 요약 + 블로그 글 작성 요청 구성\nconst system = [\n  '당신은 30년 경력의 한식 요리 전문가이자 요리 블로거입니다.',\n  '- 한식 전문가다운 확신 있는 말투를 쓰되, 독자에게 친절하게 \"~하세요\" 어조로 안내하세요.',\n  '- 군더더기 없이 간결하게 설명하세요.',\n  '- 재료는 2인분 기준으로 계량(g, 큰술, 컵 등)을 포함하세요.',\n  '- 요리 순서는 5~8단계, 각 단계는 1~2문장으로 쓰세요.',\n  '반드시 아래 JSON 형식으로만 답하세요.',\n  '{',\n  '  \"title\": \"음식 이름 (예: 김치 볶음밥)\",',\n  '  \"description\": \"한 줄 음식 설명 (예: 김치와 햄을 이용, 간단하게 만들 수 있는 인기 음식)\",',\n  '  \"intro\": \"블로그 도입부 2~3문장\",',\n  '  \"ingredients\": [\"재료와 분량\"],',\n  '  \"steps\": [\"요리 순서\"],',\n  '  \"tip\": \"전문가 팁 1~2문장\",',\n  '  \"outro\": \"마무리 인사 1문장\"',\n  '}'\n].join(String.fromCharCode(10));\nconst user = '음식: ' + food.food_ko + String.fromCharCode(10) + '선정 이유: ' + (food.reason || '') + String.fromCharCode(10, 10) + '이 음식의 재료와 요리 순서를 요약하고 블로그 글을 작성해 주세요.';\n\nreturn [{ json: { ...food, body: {\n  systemInstruction: { parts: [{ text: system }] },\n  contents: [{ role: 'user', parts: [{ text: user }] }],\n  generationConfig: { temperature: 0.7 }\n} } }];"
+      }
+    },
+    {
+      "id": "c2000000-0000-4000-8000-000000000008",
+      "name": "2-1. 재료·요리순서 요약 + 블로그 작성 (Gemini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput",
+      "position": [
+        1500,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "timeout": 90000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "lwVBb5DR9jkwNnm4",
+          "name": "Gemini API Key"
+        }
+      }
+    },
+    {
+      "id": "c2000000-0000-4000-8000-000000000009",
+      "name": "2-1. 대체 모델 (Gemini Flash-Lite)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 5000,
+      "position": [
+        1500,
+        500
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('1-4. 선정 결과 정리').item.json.body) }}",
+        "options": {
+          "timeout": 90000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "lwVBb5DR9jkwNnm4",
+          "name": "Gemini API Key"
+        }
+      }
+    },
+    {
+      "id": "c2000000-0000-4000-8000-000000000010",
+      "name": "2-2. 레시피 정리",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1800,
+        300
+      ],
+      "parameters": {
+        "jsCode": "function parseGemini(res) {\n  const parts = res.candidates?.[0]?.content?.parts || [];\n  const text = parts.filter(p => !p.thought).map(p => p.text || '').join('');\n  const m = text.replace(/```json|```/g, '').match(/\\{[\\s\\S]*\\}/);\n  if (!m) throw new Error(text ? 'Gemini 응답에서 JSON을 찾을 수 없습니다: ' + text.slice(0, 300) : 'Gemini 응답이 비어 있습니다: ' + JSON.stringify(res).slice(0, 400));\n  return JSON.parse(m[0]);\n}\n\nconst r = parseGemini($input.first().json);\nif (!r.title || !Array.isArray(r.ingredients) || !Array.isArray(r.steps)) {\n  throw new Error('레시피 필드가 누락되었습니다: ' + JSON.stringify(r).slice(0, 300));\n}\nconst food = $('1-4. 선정 결과 정리').first().json;\nreturn [{ json: { ...r, food_ko: food.food_ko, food_en: food.food_en } }];"
+      }
+    },
+    {
+      "id": "c2000000-0000-4000-8000-000000000011",
+      "name": "4-1. 음식 이미지 검색 (Wikimedia)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "position": [
+        2100,
+        300
+      ],
+      "parameters": {
+        "url": "https://commons.wikimedia.org/w/api.php",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "query"
+            },
+            {
+              "name": "generator",
+              "value": "search"
+            },
+            {
+              "name": "gsrsearch",
+              "value": "={{ $json.food_en }} filetype:bitmap"
+            },
+            {
+              "name": "gsrnamespace",
+              "value": "6"
+            },
+            {
+              "name": "gsrlimit",
+              "value": "5"
+            },
+            {
+              "name": "prop",
+              "value": "imageinfo"
+            },
+            {
+              "name": "iiprop",
+              "value": "url"
+            },
+            {
+              "name": "iiurlwidth",
+              "value": "1024"
+            },
+            {
+              "name": "format",
+              "value": "json"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "n8n-recipe-workflow/1.0"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "c2000000-0000-4000-8000-000000000012",
+      "name": "5-1. 블로그 양식 다듬기",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// 이메일용 블로그 HTML 구성\nconst r = $('2-2. 레시피 정리').first().json;\nconst pages = Object.values($input.first().json.query?.pages || {}).sort((a, b) => (a.index || 0) - (b.index || 0));\nconst page = pages.find(p => p.imageinfo?.[0]?.thumburl && /\\.(jpe?g|png)$/i.test(p.title));\nconst imageUrl = page ? page.imageinfo[0].thumburl : '';\nconst sourceUrl = page ? (page.imageinfo[0].descriptionurl || page.imageinfo[0].url) : '';\nconst esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\nconst h2 = 'font-size:19px;border-bottom:2px solid #e8590c;padding-bottom:4px;margin-top:28px;';\n\nconst html = `\n<div style=\"max-width:640px;margin:0 auto;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;color:#222;line-height:1.7;\">\n  <h1 style=\"font-size:26px;margin-bottom:4px;\">🍚 ${esc(r.title)}</h1>\n  <p style=\"color:#555;margin-top:0;\"><b>음식 설명</b> : ${esc(r.description)}</p>\n  ${imageUrl ? `<img src=\"${imageUrl}\" alt=\"${esc(r.title)}\" style=\"width:100%;border-radius:12px;\"/>\n  <p style=\"font-size:11px;color:#999;margin-top:4px;\">이미지 출처: <a href=\"${sourceUrl}\">Wikimedia Commons</a></p>` : ''}\n  <p>${esc(r.intro)}</p>\n  <h2 style=\"${h2}\">🛒 재료 (2인분)</h2>\n  <ul>${r.ingredients.map(i => `<li>${esc(i)}</li>`).join('')}</ul>\n  <h2 style=\"${h2}\">👩‍🍳 요리 순서</h2>\n  <ol>${r.steps.map(s => `<li style=\"margin-bottom:8px;\">${esc(s)}</li>`).join('')}</ol>\n  <h2 style=\"${h2}\">💡 전문가 팁</h2>\n  <p>${esc(r.tip)}</p>\n  <p>${esc(r.outro)}</p>\n</div>`;\n\nreturn [{ json: { subject: '[오늘의 한식 레시피] ' + r.title, html, imageUrl, hasImage: !!imageUrl } }];"
+      }
+    },
+    {
+      "id": "c2000000-0000-4000-8000-000000000013",
+      "name": "이미지 있음?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2700,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c2000000-0000-4000-8000-000000000014",
+              "leftValue": "={{ $json.hasImage }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "c2000000-0000-4000-8000-000000000015",
+      "name": "4-2. 이미지 다운로드",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "position": [
+        3000,
+        200
+      ],
+      "parameters": {
+        "url": "={{ $json.imageUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "n8n-recipe-workflow/1.0"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "c2000000-0000-4000-8000-000000000016",
+      "name": "5-2. Gmail 발송 (이미지 첨부)",
+      "webhookId": "c2000000-0000-4000-8000-000000000017",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        3300,
+        200
+      ],
+      "parameters": {
+        "fromEmail": "한식 레시피 봇 <twoonthemic11@gmail.com>",
+        "toEmail": "twoonthemic11@gmail.com",
+        "subject": "={{ $('5-1. 블로그 양식 다듬기').item.json.subject }}",
+        "emailFormat": "html",
+        "html": "={{ $('5-1. 블로그 양식 다듬기').item.json.html }}",
+        "options": {
+          "appendAttribution": false,
+          "fileAttachments": "data"
+        }
+      },
+      "credentials": {
+        "smtp": {
+          "id": "QDGr6rxXFNx3ilyh",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "id": "c2000000-0000-4000-8000-000000000018",
+      "name": "5-2. Gmail 발송 (이미지 없음)",
+      "webhookId": "c2000000-0000-4000-8000-000000000019",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        3000,
+        400
+      ],
+      "parameters": {
+        "fromEmail": "한식 레시피 봇 <twoonthemic11@gmail.com>",
+        "toEmail": "twoonthemic11@gmail.com",
+        "subject": "={{ $('5-1. 블로그 양식 다듬기').item.json.subject }}",
+        "emailFormat": "html",
+        "html": "={{ $('5-1. 블로그 양식 다듬기').item.json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "credentials": {
+        "smtp": {
+          "id": "QDGr6rxXFNx3ilyh",
+          "name": "SMTP account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "수동 실행": {
+      "main": [
+        [
+          {
+            "node": "1-1. 최근 한식 트렌드 조회 (Google 뉴스)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "매일 오전 9시": {
+      "main": [
+        [
+          {
+            "node": "1-1. 최근 한식 트렌드 조회 (Google 뉴스)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1-1. 최근 한식 트렌드 조회 (Google 뉴스)": {
+      "main": [
+        [
+          {
+            "node": "1-2. 음식 선정 요청 구성",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1-2. 음식 선정 요청 구성": {
+      "main": [
+        [
+          {
+            "node": "1-3. 인기 한식 선정 (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1-3. 인기 한식 선정 (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "1-4. 선정 결과 정리",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "1-3. 대체 모델 (Gemini Flash-Lite)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1-3. 대체 모델 (Gemini Flash-Lite)": {
+      "main": [
+        [
+          {
+            "node": "1-4. 선정 결과 정리",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1-4. 선정 결과 정리": {
+      "main": [
+        [
+          {
+            "node": "2-1. 재료·요리순서 요약 + 블로그 작성 (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2-1. 재료·요리순서 요약 + 블로그 작성 (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "2-2. 레시피 정리",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "2-1. 대체 모델 (Gemini Flash-Lite)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2-1. 대체 모델 (Gemini Flash-Lite)": {
+      "main": [
+        [
+          {
+            "node": "2-2. 레시피 정리",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2-2. 레시피 정리": {
+      "main": [
+        [
+          {
+            "node": "4-1. 음식 이미지 검색 (Wikimedia)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4-1. 음식 이미지 검색 (Wikimedia)": {
+      "main": [
+        [
+          {
+            "node": "5-1. 블로그 양식 다듬기",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5-1. 블로그 양식 다듬기": {
+      "main": [
+        [
+          {
+            "node": "이미지 있음?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "이미지 있음?": {
+      "main": [
+        [
+          {
+            "node": "4-2. 이미지 다운로드",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "5-2. Gmail 발송 (이미지 없음)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4-2. 이미지 다운로드": {
+      "main": [
+        [
+          {
+            "node": "5-2. Gmail 발송 (이미지 첨부)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "timezone": "Asia/Seoul",
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "JHFuejs28vxQdTWA",
+      "projectId": "RPwGrpK6nVlW1oE1",
+      "createdAt": "2026-11-06T10:48:02.050Z",
+      "updatedAt": "2026-11-06T10:48:02.050Z"
+    }
+  ],
+  "activeVersion": null
+}
