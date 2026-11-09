@@ -1,0 +1,226 @@
+{
+  "id": "IWbwxryMFstPgUbs",
+  "name": "[WEBHOOK] 웹훅 데이터 슬랙 알림 (#alert)",
+  "active": true,
+  "activeVersionId": "aa5e4023-04e2-43e9-bf26-d0708b135b81",
+  "createdAt": "2026-11-04T12:33:06.517Z",
+  "updatedAt": "2026-11-04T12:38:40.452Z",
+  "isArchived": false,
+  "versionId": "aa5e4023-04e2-43e9-bf26-d0708b135b81",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "slack-alert",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-4000-8000-000000000001",
+      "name": "웹훅 수신",
+      "webhookId": "0c7e4a1b-2d3f-4e5a-8b9c-1a2b3c4d5e6f",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        256,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "channel",
+        "channelId": "alert"
+      },
+      "id": "b2c3d4e5-0002-4000-8000-000000000002",
+      "name": "#alert 채널 생성",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        560,
+        304
+      ],
+      "webhookId": "6a2fcfbc-c2ed-45fa-9fde-fc5c1da9ea75",
+      "credentials": {
+        "slackApi": {
+          "id": "0ybj6wayvw5Sq26p",
+          "name": "Slack account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#alert"
+        },
+        "text": "=:rotating_light: *웹훅 알림 수신*\n```\n{{ JSON.stringify($('웹훅 수신').item.json.body, null, 2) }}\n```",
+        "otherOptions": {}
+      },
+      "id": "b2c3d4e5-0003-4000-8000-000000000003",
+      "name": "슬랙 알림 전송",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        864,
+        304
+      ],
+      "webhookId": "363746fe-3ff7-441a-b988-f241fd5c74d1",
+      "credentials": {
+        "slackApi": {
+          "id": "0ybj6wayvw5Sq26p",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "웹훅 수신": {
+      "main": [
+        [
+          {
+            "node": "#alert 채널 생성",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "#alert 채널 생성": {
+      "main": [
+        [
+          {
+            "node": "슬랙 알림 전송",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "IWbwxryMFstPgUbs",
+      "projectId": "RPwGrpK6nVlW1oE1",
+      "createdAt": "2026-11-04T12:33:06.563Z",
+      "updatedAt": "2026-11-04T12:33:06.563Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "aa5e4023-04e2-43e9-bf26-d0708b135b81",
+    "workflowId": "IWbwxryMFstPgUbs",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "slack-alert",
+          "responseMode": "lastNode",
+          "options": {}
+        },
+        "id": "b2c3d4e5-0001-4000-8000-000000000001",
+        "name": "웹훅 수신",
+        "webhookId": "0c7e4a1b-2d3f-4e5a-8b9c-1a2b3c4d5e6f",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          256,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "channel",
+          "channelId": "alert"
+        },
+        "id": "b2c3d4e5-0002-4000-8000-000000000002",
+        "name": "#alert 채널 생성",
+        "type": "n8n-nodes-base.slack",
+        "typeVersion": 2.7,
+        "position": [
+          560,
+          304
+        ],
+        "webhookId": "6a2fcfbc-c2ed-45fa-9fde-fc5c1da9ea75",
+        "credentials": {
+          "slackApi": {
+            "id": "0ybj6wayvw5Sq26p",
+            "name": "Slack account"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "select": "channel",
+          "channelId": {
+            "__rl": true,
+            "mode": "name",
+            "value": "#alert"
+          },
+          "text": "=:rotating_light: *웹훅 알림 수신*\n```\n{{ JSON.stringify($('웹훅 수신').item.json.body, null, 2) }}\n```",
+          "otherOptions": {}
+        },
+        "id": "b2c3d4e5-0003-4000-8000-000000000003",
+        "name": "슬랙 알림 전송",
+        "type": "n8n-nodes-base.slack",
+        "typeVersion": 2.7,
+        "position": [
+          864,
+          304
+        ],
+        "webhookId": "363746fe-3ff7-441a-b988-f241fd5c74d1",
+        "credentials": {
+          "slackApi": {
+            "id": "0ybj6wayvw5Sq26p",
+            "name": "Slack account"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "웹훅 수신": {
+        "main": [
+          [
+            {
+              "node": "#alert 채널 생성",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "#alert 채널 생성": {
+        "main": [
+          [
+            {
+              "node": "슬랙 알림 전송",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "MINGOO KIM",
+    "name": null,
+    "description": null,
+    "autosaved": true,
+    "createdAt": "2026-11-04T12:38:40.456Z",
+    "updatedAt": "2026-11-04T12:38:40.456Z"
+  }
+}
