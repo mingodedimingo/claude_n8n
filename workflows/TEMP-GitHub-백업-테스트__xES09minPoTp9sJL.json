@@ -1,0 +1,718 @@
+{
+  "id": "xES09minPoTp9sJL",
+  "name": "[TEMP] GitHub 백업 테스트",
+  "active": true,
+  "activeVersionId": "6617ef7a-4fc4-4fc9-8e84-d36ecc1b9ee5",
+  "createdAt": "2026-11-09T12:06:27.016Z",
+  "updatedAt": "2026-11-09T12:06:27.016Z",
+  "isArchived": false,
+  "versionId": "6617ef7a-4fc4-4fc9-8e84-d36ecc1b9ee5",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "id": "a1000000-0000-4000-8000-000000000001",
+      "name": "매일 18시",
+      "webhookId": "b7c1e2f0-0000-4000-8000-backuptest01",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "temp-github-backup-test",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1000000-0000-4000-8000-000000000002",
+      "name": "전체 워크플로우 조회",
+      "type": "n8n-nodes-base.n8n",
+      "typeVersion": 1,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "resource": "workflow",
+        "operation": "getAll",
+        "returnAll": true,
+        "filters": {},
+        "requestOptions": {}
+      },
+      "credentials": {
+        "n8nApi": {
+          "id": "vrWhyHnX9lkCSRJt",
+          "name": "n8n API (local)"
+        }
+      }
+    },
+    {
+      "id": "a1000000-0000-4000-8000-000000000003",
+      "name": "백업 파일 준비",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// 백업 대상 저장소 설정\nconst OWNER = 'mingodedimingo';\nconst REPO = 'claude_n8n';\nconst DIR = 'workflows';\n\nconst out = [];\nfor (const item of $input.all()) {\n  const wf = item.json;\n  const safeName = String(wf.name || 'untitled')\n    .replace(/[^0-9A-Za-z가-힣ㄱ-ㅎㅏ-ㅣ._-]+/g, '-')\n    .replace(/-+/g, '-')\n    .replace(/^-|-$/g, '')\n    .slice(0, 80);\n  const path = DIR + '/' + safeName + '__' + wf.id + '.json';\n  const body = JSON.stringify(wf, null, 2) + String.fromCharCode(10);\n  out.push({\n    json: {\n      workflowId: wf.id,\n      workflowName: wf.name,\n      path,\n      url: 'https://api.github.com/repos/' + OWNER + '/' + REPO + '/contents/' + path.split('/').map(encodeURIComponent).join('/'),\n      contentBase64: Buffer.from(body, 'utf8').toString('base64'),\n    },\n  });\n}\nreturn out;"
+      }
+    },
+    {
+      "id": "a1000000-0000-4000-8000-000000000004",
+      "name": "GitHub 기존 파일 조회",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "credentials": {
+        "githubApi": {
+          "id": "v9uk3bfNFXDRK5Pk",
+          "name": "GitHub (mingodedimingo)"
+        }
+      }
+    },
+    {
+      "id": "a1000000-0000-4000-8000-000000000005",
+      "name": "변경 여부 판단",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const prepared = $('백업 파일 준비').all();\nconst existing = $input.all();\nconst stamp = $now.setZone('Asia/Seoul').toFormat('yyyy-MM-dd HH:mm');\nconst clean = (s) => String(s || '').replace(/[^A-Za-z0-9+/=]/g, '');\n\nconst changed = [];\nlet unchanged = 0;\nlet lookupErrors = 0;\nprepared.forEach((p, i) => {\n  const res = existing[i] ? existing[i].json : {};\n  const status = res.statusCode;\n  const body = res.body || {};\n  if (status === 200 && clean(body.content) === clean(p.json.contentBase64)) {\n    unchanged++;\n    return;\n  }\n  if (status !== 200 && status !== 404) lookupErrors++;\n  const payload = {\n    message: 'backup: ' + p.json.workflowName + ' (' + stamp + ')',\n    content: p.json.contentBase64,\n  };\n  if (status === 200 && body.sha) payload.sha = body.sha;\n  changed.push({ json: { ...p.json, isNew: status !== 200, payload } });\n});\n\nconst total = prepared.length;\nif (changed.length === 0) {\n  return [{ json: { noChange: true, total, unchanged, lookupErrors } }];\n}\nreturn changed.map((c) => ({ json: { ...c.json, noChange: false, total, unchanged } }));"
+      }
+    },
+    {
+      "id": "a1000000-0000-4000-8000-000000000006",
+      "name": "변경 있음?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1100,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.noChange }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a1000000-0000-4000-8000-000000000007",
+      "name": "GitHub 파일 저장",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput",
+      "position": [
+        1320,
+        -100
+      ],
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 300
+            }
+          }
+        }
+      },
+      "credentials": {
+        "githubApi": {
+          "id": "v9uk3bfNFXDRK5Pk",
+          "name": "GitHub (mingodedimingo)"
+        }
+      }
+    },
+    {
+      "id": "a1000000-0000-4000-8000-000000000008",
+      "name": "결과 요약",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items = $input.all();\nconst first = items[0].json;\nconst stamp = $now.setZone('Asia/Seoul').toFormat('MM/dd HH:mm');\nlet message;\nif (first.noChange === true) {\n  message = '[n8n 백업] ' + stamp + ' 변경 없음 (전체 ' + first.total + '개)';\n} else {\n  const prepared = $('변경 여부 판단').all();\n  const total = prepared[0].json.total;\n  const unchanged = prepared[0].json.unchanged;\n  const failed = [];\n  let created = 0, updated = 0;\n  items.forEach((it, i) => {\n    const src = prepared[i] ? prepared[i].json : {};\n    if (it.json.error || !it.json.content) { failed.push(src.workflowName || '?'); return; }\n    if (src.isNew) created++; else updated++;\n  });\n  message = '[n8n 백업] ' + stamp + ' 전체 ' + total + '개: 신규 ' + created + ', 수정 ' + updated + ', 변경없음 ' + unchanged;\n  if (failed.length) message += ' / 실패 ' + failed.length + ': ' + failed.join(', ');\n}\nreturn [{ json: { message: message.slice(0, 190) } }];"
+      }
+    },
+    {
+      "id": "a1000000-0000-4000-8000-000000000009",
+      "name": "카톡 결과 알림",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput",
+      "position": [
+        1760,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:5678/webhook/kakao-notify",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message: $json.message }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1000000-0000-4000-8000-000000000010",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -260
+      ],
+      "parameters": {
+        "width": 820,
+        "height": 200,
+        "content": "### n8n 워크플로우 GitHub 백업 (GitHub REST API)\n- 매일 18:00(Asia/Seoul) 전체 워크플로우를 조회해 `mingodedimingo/claude_n8n` 의 `workflows/이름__ID.json` 으로 저장\n- GitHub Contents API: GET으로 기존 sha·내용 확인 → 내용이 바뀐 파일만 PUT (변경 없으면 커밋 안 함)\n- 저장소 변경: '백업 파일 준비' 노드의 OWNER / REPO / DIR 수정\n- 결과는 카카오톡 나에게 보내기(/webhook/kakao-notify)로 알림"
+      }
+    }
+  ],
+  "connections": {
+    "매일 18시": {
+      "main": [
+        [
+          {
+            "node": "전체 워크플로우 조회",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "전체 워크플로우 조회": {
+      "main": [
+        [
+          {
+            "node": "백업 파일 준비",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "백업 파일 준비": {
+      "main": [
+        [
+          {
+            "node": "GitHub 기존 파일 조회",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub 기존 파일 조회": {
+      "main": [
+        [
+          {
+            "node": "변경 여부 판단",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "변경 여부 판단": {
+      "main": [
+        [
+          {
+            "node": "변경 있음?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "변경 있음?": {
+      "main": [
+        [
+          {
+            "node": "GitHub 파일 저장",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "결과 요약",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub 파일 저장": {
+      "main": [
+        [
+          {
+            "node": "결과 요약",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "결과 요약": {
+      "main": [
+        [
+          {
+            "node": "카톡 결과 알림",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "timezone": "Asia/Seoul",
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "xES09minPoTp9sJL",
+      "projectId": "RPwGrpK6nVlW1oE1",
+      "createdAt": "2026-11-09T12:06:27.020Z",
+      "updatedAt": "2026-11-09T12:06:27.020Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "6617ef7a-4fc4-4fc9-8e84-d36ecc1b9ee5",
+    "workflowId": "xES09minPoTp9sJL",
+    "nodes": [
+      {
+        "id": "a1000000-0000-4000-8000-000000000001",
+        "name": "매일 18시",
+        "webhookId": "b7c1e2f0-0000-4000-8000-backuptest01",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          0,
+          0
+        ],
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "temp-github-backup-test",
+          "responseMode": "lastNode",
+          "options": {}
+        }
+      },
+      {
+        "id": "a1000000-0000-4000-8000-000000000002",
+        "name": "전체 워크플로우 조회",
+        "type": "n8n-nodes-base.n8n",
+        "typeVersion": 1,
+        "position": [
+          220,
+          0
+        ],
+        "parameters": {
+          "resource": "workflow",
+          "operation": "getAll",
+          "returnAll": true,
+          "filters": {},
+          "requestOptions": {}
+        },
+        "credentials": {
+          "n8nApi": {
+            "id": "vrWhyHnX9lkCSRJt",
+            "name": "n8n API (local)"
+          }
+        }
+      },
+      {
+        "id": "a1000000-0000-4000-8000-000000000003",
+        "name": "백업 파일 준비",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          440,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// 백업 대상 저장소 설정\nconst OWNER = 'mingodedimingo';\nconst REPO = 'claude_n8n';\nconst DIR = 'workflows';\n\nconst out = [];\nfor (const item of $input.all()) {\n  const wf = item.json;\n  const safeName = String(wf.name || 'untitled')\n    .replace(/[^0-9A-Za-z가-힣ㄱ-ㅎㅏ-ㅣ._-]+/g, '-')\n    .replace(/-+/g, '-')\n    .replace(/^-|-$/g, '')\n    .slice(0, 80);\n  const path = DIR + '/' + safeName + '__' + wf.id + '.json';\n  const body = JSON.stringify(wf, null, 2) + String.fromCharCode(10);\n  out.push({\n    json: {\n      workflowId: wf.id,\n      workflowName: wf.name,\n      path,\n      url: 'https://api.github.com/repos/' + OWNER + '/' + REPO + '/contents/' + path.split('/').map(encodeURIComponent).join('/'),\n      contentBase64: Buffer.from(body, 'utf8').toString('base64'),\n    },\n  });\n}\nreturn out;"
+        }
+      },
+      {
+        "id": "a1000000-0000-4000-8000-000000000004",
+        "name": "GitHub 기존 파일 조회",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          660,
+          0
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{ $json.url }}",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "githubApi",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Accept",
+                "value": "application/vnd.github+json"
+              },
+              {
+                "name": "X-GitHub-Api-Version",
+                "value": "2022-11-28"
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true
+              }
+            }
+          }
+        },
+        "credentials": {
+          "githubApi": {
+            "id": "v9uk3bfNFXDRK5Pk",
+            "name": "GitHub (mingodedimingo)"
+          }
+        }
+      },
+      {
+        "id": "a1000000-0000-4000-8000-000000000005",
+        "name": "변경 여부 판단",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          880,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "const prepared = $('백업 파일 준비').all();\nconst existing = $input.all();\nconst stamp = $now.setZone('Asia/Seoul').toFormat('yyyy-MM-dd HH:mm');\nconst clean = (s) => String(s || '').replace(/[^A-Za-z0-9+/=]/g, '');\n\nconst changed = [];\nlet unchanged = 0;\nlet lookupErrors = 0;\nprepared.forEach((p, i) => {\n  const res = existing[i] ? existing[i].json : {};\n  const status = res.statusCode;\n  const body = res.body || {};\n  if (status === 200 && clean(body.content) === clean(p.json.contentBase64)) {\n    unchanged++;\n    return;\n  }\n  if (status !== 200 && status !== 404) lookupErrors++;\n  const payload = {\n    message: 'backup: ' + p.json.workflowName + ' (' + stamp + ')',\n    content: p.json.contentBase64,\n  };\n  if (status === 200 && body.sha) payload.sha = body.sha;\n  changed.push({ json: { ...p.json, isNew: status !== 200, payload } });\n});\n\nconst total = prepared.length;\nif (changed.length === 0) {\n  return [{ json: { noChange: true, total, unchanged, lookupErrors } }];\n}\nreturn changed.map((c) => ({ json: { ...c.json, noChange: false, total, unchanged } }));"
+        }
+      },
+      {
+        "id": "a1000000-0000-4000-8000-000000000006",
+        "name": "변경 있음?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1100,
+          0
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "c1",
+                "leftValue": "={{ $json.noChange }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "false",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        }
+      },
+      {
+        "id": "a1000000-0000-4000-8000-000000000007",
+        "name": "GitHub 파일 저장",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "onError": "continueRegularOutput",
+        "position": [
+          1320,
+          -100
+        ],
+        "parameters": {
+          "method": "PUT",
+          "url": "={{ $json.url }}",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "githubApi",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Accept",
+                "value": "application/vnd.github+json"
+              },
+              {
+                "name": "X-GitHub-Api-Version",
+                "value": "2022-11-28"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json.payload) }}",
+          "options": {
+            "batching": {
+              "batch": {
+                "batchSize": 1,
+                "batchInterval": 300
+              }
+            }
+          }
+        },
+        "credentials": {
+          "githubApi": {
+            "id": "v9uk3bfNFXDRK5Pk",
+            "name": "GitHub (mingodedimingo)"
+          }
+        }
+      },
+      {
+        "id": "a1000000-0000-4000-8000-000000000008",
+        "name": "결과 요약",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1540,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "const items = $input.all();\nconst first = items[0].json;\nconst stamp = $now.setZone('Asia/Seoul').toFormat('MM/dd HH:mm');\nlet message;\nif (first.noChange === true) {\n  message = '[n8n 백업] ' + stamp + ' 변경 없음 (전체 ' + first.total + '개)';\n} else {\n  const prepared = $('변경 여부 판단').all();\n  const total = prepared[0].json.total;\n  const unchanged = prepared[0].json.unchanged;\n  const failed = [];\n  let created = 0, updated = 0;\n  items.forEach((it, i) => {\n    const src = prepared[i] ? prepared[i].json : {};\n    if (it.json.error || !it.json.content) { failed.push(src.workflowName || '?'); return; }\n    if (src.isNew) created++; else updated++;\n  });\n  message = '[n8n 백업] ' + stamp + ' 전체 ' + total + '개: 신규 ' + created + ', 수정 ' + updated + ', 변경없음 ' + unchanged;\n  if (failed.length) message += ' / 실패 ' + failed.length + ': ' + failed.join(', ');\n}\nreturn [{ json: { message: message.slice(0, 190) } }];"
+        }
+      },
+      {
+        "id": "a1000000-0000-4000-8000-000000000009",
+        "name": "카톡 결과 알림",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "onError": "continueRegularOutput",
+        "position": [
+          1760,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://localhost:5678/webhook/kakao-notify",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ message: $json.message }) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "a1000000-0000-4000-8000-000000000010",
+        "name": "Sticky Note",
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
+        "position": [
+          -40,
+          -260
+        ],
+        "parameters": {
+          "width": 820,
+          "height": 200,
+          "content": "### n8n 워크플로우 GitHub 백업 (GitHub REST API)\n- 매일 18:00(Asia/Seoul) 전체 워크플로우를 조회해 `mingodedimingo/claude_n8n` 의 `workflows/이름__ID.json` 으로 저장\n- GitHub Contents API: GET으로 기존 sha·내용 확인 → 내용이 바뀐 파일만 PUT (변경 없으면 커밋 안 함)\n- 저장소 변경: '백업 파일 준비' 노드의 OWNER / REPO / DIR 수정\n- 결과는 카카오톡 나에게 보내기(/webhook/kakao-notify)로 알림"
+        }
+      }
+    ],
+    "connections": {
+      "매일 18시": {
+        "main": [
+          [
+            {
+              "node": "전체 워크플로우 조회",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "전체 워크플로우 조회": {
+        "main": [
+          [
+            {
+              "node": "백업 파일 준비",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "백업 파일 준비": {
+        "main": [
+          [
+            {
+              "node": "GitHub 기존 파일 조회",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "GitHub 기존 파일 조회": {
+        "main": [
+          [
+            {
+              "node": "변경 여부 판단",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "변경 여부 판단": {
+        "main": [
+          [
+            {
+              "node": "변경 있음?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "변경 있음?": {
+        "main": [
+          [
+            {
+              "node": "GitHub 파일 저장",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "결과 요약",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "GitHub 파일 저장": {
+        "main": [
+          [
+            {
+              "node": "결과 요약",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "결과 요약": {
+        "main": [
+          [
+            {
+              "node": "카톡 결과 알림",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "MINGOO KIM",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "createdAt": "2026-11-09T12:06:27.022Z",
+    "updatedAt": "2026-11-09T12:06:27.022Z"
+  }
+}
