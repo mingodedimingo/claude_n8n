@@ -1,0 +1,172 @@
+{
+  "id": "Ay6hnnVMYuhcWLC4",
+  "name": "[CRON] 매일 아침 8시 날씨 알림 (역삼·수원)",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-11-06T12:51:16.998Z",
+  "updatedAt": "2026-11-06T12:51:46.487Z",
+  "isArchived": false,
+  "versionId": "0528deb6-f9b9-464f-a4f1-41f0450765d6",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "a1",
+      "name": "매일 08:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        256,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.open-meteo.com/v1/forecast",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "latitude",
+              "value": "37.5006,37.2636"
+            },
+            {
+              "name": "longitude",
+              "value": "127.0366,127.0286"
+            },
+            {
+              "name": "current",
+              "value": "temperature_2m,relative_humidity_2m,weather_code"
+            },
+            {
+              "name": "daily",
+              "value": "precipitation_probability_max"
+            },
+            {
+              "name": "timezone",
+              "value": "Asia/Seoul"
+            },
+            {
+              "name": "forecast_days",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a2",
+      "name": "Open-Meteo 날씨 조회",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        560,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const names = ['서울시 역삼동', '경기도 수원시'];\nconst codeMap = {0:'맑음',1:'대체로 맑음',2:'구름 조금',3:'흐림',45:'안개',48:'짙은 안개',51:'약한 이슬비',53:'이슬비',55:'강한 이슬비',56:'어는 이슬비',57:'강한 어는 이슬비',61:'약한 비',63:'비',65:'강한 비',66:'어는 비',67:'강한 어는 비',71:'약한 눈',73:'눈',75:'강한 눈',77:'싸락눈',80:'약한 소나기',81:'소나기',82:'강한 소나기',85:'약한 눈소나기',86:'강한 눈소나기',95:'뇌우',96:'우박 동반 뇌우',99:'강한 우박 동반 뇌우'};\n// 다중 좌표 응답은 배열 -> n8n에서 아이템 여러 개로 분리되거나 단일 배열로 들어올 수 있음\nlet locs = $input.all().map(i => i.json);\nif (locs.length === 1 && Array.isArray(locs[0])) locs = locs[0];\nconst blocks = locs.map((d, idx) => {\n  const c = d.current;\n  const pop = d.daily?.precipitation_probability_max?.[0];\n  return `[${names[idx]} 날씨]\\n- 날씨: ${codeMap[c.weather_code] ?? '알 수 없음'}\\n- 온도: ${c.temperature_2m}°C\\n- 습도: ${c.relative_humidity_2m}%\\n- 강수확률: ${pop ?? '-'}%`;\n});\nreturn [{ json: { text: blocks.join('\\n\\n') } }];"
+      },
+      "id": "a3",
+      "name": "메시지 포맷",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        864,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#alert"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {}
+      },
+      "id": "a4",
+      "name": "Slack #alert 전송",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1152,
+        304
+      ],
+      "webhookId": "bfdbfa2e-2fa1-4f26-8762-1afc0cf96cec",
+      "credentials": {
+        "slackApi": {
+          "id": "0ybj6wayvw5Sq26p",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "매일 08:00": {
+      "main": [
+        [
+          {
+            "node": "Open-Meteo 날씨 조회",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Open-Meteo 날씨 조회": {
+      "main": [
+        [
+          {
+            "node": "메시지 포맷",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "메시지 포맷": {
+      "main": [
+        [
+          {
+            "node": "Slack #alert 전송",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "timezone": "Asia/Seoul",
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "Ay6hnnVMYuhcWLC4",
+      "projectId": "RPwGrpK6nVlW1oE1",
+      "createdAt": "2026-11-06T12:51:17.003Z",
+      "updatedAt": "2026-11-06T12:51:17.003Z"
+    }
+  ],
+  "activeVersion": null
+}

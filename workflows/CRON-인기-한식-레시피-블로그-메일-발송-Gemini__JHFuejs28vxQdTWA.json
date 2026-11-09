@@ -606,7 +606,6 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "staticData": null,
   "pinData": {},
   "meta": {
     "templateCredsSetupCompleted": true

@@ -1,0 +1,130 @@
+{
+  "id": "UOfj3U8R53sCb1g3",
+  "name": "좋은 글귀 한 줄 생성기 (웹훅)",
+  "active": true,
+  "activeVersionId": "eaad84bd-ed16-4ae9-9b1e-3992e3f9a47f",
+  "createdAt": "2026-11-04T11:15:02.346Z",
+  "updatedAt": "2026-11-04T11:39:51.099Z",
+  "isArchived": false,
+  "versionId": "89b95016-ad9a-40f7-9317-140124d11a6f",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "path": "good-quote",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0003-4000-8000-000000000003",
+      "name": "Webhook",
+      "webhookId": "6f1c2a9e-4b7d-4e2a-9c1f-3d5e7a9b1c20",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const quotes = [\n  { text: '천 리 길도 한 걸음부터.', author: '노자' },\n  { text: '오늘 할 수 있는 일을 내일로 미루지 마라.', author: '벤저민 프랭클린' },\n  { text: '실패는 성공의 어머니다.', author: '속담' },\n  { text: '행복은 습관이다. 그것을 몸에 지니라.', author: '허버드' },\n  { text: '가장 큰 영광은 한 번도 실패하지 않음이 아니라 실패할 때마다 다시 일어서는 데 있다.', author: '공자' },\n  { text: '배움에는 끝이 없다.', author: '속담' },\n  { text: '작은 기회로부터 종종 위대한 업적이 시작된다.', author: '데모스테네스' },\n  { text: '꿈을 기록하는 것이 나의 목표였던 적은 없다. 꿈을 실현하는 것이 나의 목표다.', author: '만 레이' },\n  { text: '지금 이 순간을 즐겨라.', author: '호라티우스' },\n  { text: '변화를 원한다면 스스로 그 변화가 되어라.', author: '마하트마 간디' }\n];\n\nconst pick = quotes[Math.floor(Math.random() * quotes.length)];\nconst line = `\"${pick.text}\" — ${pick.author}`;\n\n// 콘솔 출력 (n8n 서버 로그 / 수동 실행 시 브라우저 개발자도구 콘솔)\nconsole.log(`[좋은 글귀] ${line}`);\n\nreturn [{\n  json: {\n    quote: pick.text,\n    author: pick.author,\n    line,\n    generatedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "a1b2c3d4-0002-4000-8000-000000000002",
+      "name": "좋은 글귀 생성",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "좋은 글귀 생성",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "UOfj3U8R53sCb1g3",
+      "projectId": "RPwGrpK6nVlW1oE1",
+      "createdAt": "2026-11-04T11:15:02.350Z",
+      "updatedAt": "2026-11-04T11:15:02.350Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "eaad84bd-ed16-4ae9-9b1e-3992e3f9a47f",
+    "workflowId": "UOfj3U8R53sCb1g3",
+    "nodes": [
+      {
+        "id": "a1b2c3d4-0003-4000-8000-000000000003",
+        "name": "Webhook",
+        "webhookId": "6f1c2a9e-4b7d-4e2a-9c1f-3d5e7a9b1c20",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          0,
+          0
+        ],
+        "parameters": {
+          "httpMethod": "GET",
+          "path": "good-quote",
+          "responseMode": "lastNode",
+          "responseData": "firstEntryJson",
+          "options": {}
+        }
+      },
+      {
+        "id": "a1b2c3d4-0002-4000-8000-000000000002",
+        "name": "좋은 글귀 생성",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          240,
+          0
+        ],
+        "parameters": {
+          "jsCode": "const quotes = [\n  { text: '천 리 길도 한 걸음부터.', author: '노자' },\n  { text: '오늘 할 수 있는 일을 내일로 미루지 마라.', author: '벤저민 프랭클린' },\n  { text: '실패는 성공의 어머니다.', author: '속담' },\n  { text: '행복은 습관이다. 그것을 몸에 지니라.', author: '허버드' },\n  { text: '가장 큰 영광은 한 번도 실패하지 않음이 아니라 실패할 때마다 다시 일어서는 데 있다.', author: '공자' },\n  { text: '배움에는 끝이 없다.', author: '속담' },\n  { text: '작은 기회로부터 종종 위대한 업적이 시작된다.', author: '데모스테네스' },\n  { text: '꿈을 기록하는 것이 나의 목표였던 적은 없다. 꿈을 실현하는 것이 나의 목표다.', author: '만 레이' },\n  { text: '지금 이 순간을 즐겨라.', author: '호라티우스' },\n  { text: '변화를 원한다면 스스로 그 변화가 되어라.', author: '마하트마 간디' }\n];\n\nconst pick = quotes[Math.floor(Math.random() * quotes.length)];\nconst line = `\"${pick.text}\" — ${pick.author}`;\n\n// 콘솔 출력 (n8n 서버 로그 / 수동 실행 시 브라우저 개발자도구 콘솔)\nconsole.log(`[좋은 글귀] ${line}`);\n\nreturn [{\n  json: {\n    quote: pick.text,\n    author: pick.author,\n    line,\n    generatedAt: new Date().toISOString()\n  }\n}];"
+        }
+      }
+    ],
+    "connections": {
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "좋은 글귀 생성",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "MINGOO KIM",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "createdAt": "2026-11-04T11:35:59.147Z",
+    "updatedAt": "2026-11-04T11:35:59.147Z"
+  }
+}
