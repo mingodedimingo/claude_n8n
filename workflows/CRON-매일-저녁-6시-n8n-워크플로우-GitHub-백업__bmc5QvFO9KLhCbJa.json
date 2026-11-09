@@ -2,11 +2,11 @@
   "id": "bmc5QvFO9KLhCbJa",
   "name": "[CRON] 매일 저녁 6시 n8n 워크플로우 GitHub 백업",
   "active": true,
-  "activeVersionId": "9448d68a-4429-4347-ac1f-63e7137a5e9b",
+  "activeVersionId": "8ee8863e-0941-414c-9f64-bae6874a997f",
   "createdAt": "2026-11-09T12:06:22.487Z",
-  "updatedAt": "2026-11-09T12:10:20.637Z",
+  "updatedAt": "2026-11-09T12:11:58.054Z",
   "isArchived": false,
-  "versionId": "9448d68a-4429-4347-ac1f-63e7137a5e9b",
+  "versionId": "8ee8863e-0941-414c-9f64-bae6874a997f",
   "triggerCount": 1,
   "nodes": [
     {
@@ -112,7 +112,7 @@
       ],
       "parameters": {
         "method": "GET",
-        "url": "={{ $json.api }}/git/ref/heads/{{ $json.branch }}",
+        "url": "={{ $json.api }}/commits/{{ $json.branch }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "githubApi",
         "sendHeaders": true,
@@ -148,7 +148,7 @@
       ],
       "parameters": {
         "method": "GET",
-        "url": "={{ $('백업 파일 준비').first().json.api }}/git/trees/{{ $json.object.sha }}?recursive=1",
+        "url": "={{ $('백업 파일 준비').first().json.api }}/git/trees/{{ $json.commit.tree.sha }}?recursive=1",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "githubApi",
         "sendHeaders": true,
@@ -184,7 +184,7 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const prep = $('백업 파일 준비').first().json;\nconst parentSha = $('브랜치 최신 커밋 조회').first().json.object.sha;\nconst oldTree = $input.first().json;\n\nconst tree = prep.files.map((f) => ({ path: f.path, mode: '100644', type: 'blob', content: f.content }));\nconst keep = new Set(prep.files.map((f) => f.path));\n// n8n에서 삭제된 워크플로우 파일은 저장소에서도 제거 (커밋 이력에는 남음)\nfor (const e of oldTree.tree || []) {\n  if (e.type === 'blob' && e.path.startsWith(prep.dir + '/') && e.path.endsWith('.json') && !keep.has(e.path)) {\n    tree.push({ path: e.path, mode: '100644', type: 'blob', sha: null });\n  }\n}\nreturn [{ json: { parentSha, baseTreeSha: oldTree.sha, body: { base_tree: oldTree.sha, tree } } }];"
+        "jsCode": "const prep = $('백업 파일 준비').first().json;\nconst parentSha = $('브랜치 최신 커밋 조회').first().json.sha;\nconst oldTree = $input.first().json;\n\nconst tree = prep.files.map((f) => ({ path: f.path, mode: '100644', type: 'blob', content: f.content }));\nconst keep = new Set(prep.files.map((f) => f.path));\n// n8n에서 삭제된 워크플로우 파일은 저장소에서도 제거 (커밋 이력에는 남음)\nfor (const e of oldTree.tree || []) {\n  if (e.type === 'blob' && e.path.startsWith(prep.dir + '/') && e.path.endsWith('.json') && !keep.has(e.path)) {\n    tree.push({ path: e.path, mode: '100644', type: 'blob', sha: null });\n  }\n}\nreturn [{ json: { parentSha, baseTreeSha: oldTree.sha, body: { base_tree: oldTree.sha, tree } } }];"
       }
     },
     {
@@ -592,7 +592,7 @@
     }
   ],
   "activeVersion": {
-    "versionId": "9448d68a-4429-4347-ac1f-63e7137a5e9b",
+    "versionId": "8ee8863e-0941-414c-9f64-bae6874a997f",
     "workflowId": "bmc5QvFO9KLhCbJa",
     "nodes": [
       {
@@ -698,7 +698,7 @@
         ],
         "parameters": {
           "method": "GET",
-          "url": "={{ $json.api }}/git/ref/heads/{{ $json.branch }}",
+          "url": "={{ $json.api }}/commits/{{ $json.branch }}",
           "authentication": "predefinedCredentialType",
           "nodeCredentialType": "githubApi",
           "sendHeaders": true,
@@ -734,7 +734,7 @@
         ],
         "parameters": {
           "method": "GET",
-          "url": "={{ $('백업 파일 준비').first().json.api }}/git/trees/{{ $json.object.sha }}?recursive=1",
+          "url": "={{ $('백업 파일 준비').first().json.api }}/git/trees/{{ $json.commit.tree.sha }}?recursive=1",
           "authentication": "predefinedCredentialType",
           "nodeCredentialType": "githubApi",
           "sendHeaders": true,
@@ -770,7 +770,7 @@
         ],
         "parameters": {
           "mode": "runOnceForAllItems",
-          "jsCode": "const prep = $('백업 파일 준비').first().json;\nconst parentSha = $('브랜치 최신 커밋 조회').first().json.object.sha;\nconst oldTree = $input.first().json;\n\nconst tree = prep.files.map((f) => ({ path: f.path, mode: '100644', type: 'blob', content: f.content }));\nconst keep = new Set(prep.files.map((f) => f.path));\n// n8n에서 삭제된 워크플로우 파일은 저장소에서도 제거 (커밋 이력에는 남음)\nfor (const e of oldTree.tree || []) {\n  if (e.type === 'blob' && e.path.startsWith(prep.dir + '/') && e.path.endsWith('.json') && !keep.has(e.path)) {\n    tree.push({ path: e.path, mode: '100644', type: 'blob', sha: null });\n  }\n}\nreturn [{ json: { parentSha, baseTreeSha: oldTree.sha, body: { base_tree: oldTree.sha, tree } } }];"
+          "jsCode": "const prep = $('백업 파일 준비').first().json;\nconst parentSha = $('브랜치 최신 커밋 조회').first().json.sha;\nconst oldTree = $input.first().json;\n\nconst tree = prep.files.map((f) => ({ path: f.path, mode: '100644', type: 'blob', content: f.content }));\nconst keep = new Set(prep.files.map((f) => f.path));\n// n8n에서 삭제된 워크플로우 파일은 저장소에서도 제거 (커밋 이력에는 남음)\nfor (const e of oldTree.tree || []) {\n  if (e.type === 'blob' && e.path.startsWith(prep.dir + '/') && e.path.endsWith('.json') && !keep.has(e.path)) {\n    tree.push({ path: e.path, mode: '100644', type: 'blob', sha: null });\n  }\n}\nreturn [{ json: { parentSha, baseTreeSha: oldTree.sha, body: { base_tree: oldTree.sha, tree } } }];"
         }
       },
       {
@@ -1165,7 +1165,7 @@
     "name": null,
     "description": null,
     "autosaved": false,
-    "createdAt": "2026-11-09T12:10:20.641Z",
-    "updatedAt": "2026-11-09T12:10:20.641Z"
+    "createdAt": "2026-11-09T12:11:58.056Z",
+    "updatedAt": "2026-11-09T12:11:58.056Z"
   }
 }
